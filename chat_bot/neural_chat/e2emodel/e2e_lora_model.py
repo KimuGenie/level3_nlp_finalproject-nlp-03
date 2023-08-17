@@ -4,9 +4,8 @@ from transformers import (
     AutoTokenizer,
     BitsAndBytesConfig,
     GenerationConfig,
-    pipeline,
 )
-from peft import PeftModelForCausalLM, PeftConfig, prepare_model_for_int8_training
+from peft import PeftModelForCausalLM, PeftConfig
 from typing import Union
 from chat_bot.neural_chat.conversation import Conversation
 from chat_bot.neural_chat.advisor import Advisor
@@ -23,13 +22,17 @@ class E2ELoRA(torch.nn.Module):
         super().__init__()
         self.device = device
         peft_config = PeftConfig.from_pretrained(checkpoint_path)
-        bnb_config = BitsAndBytesConfig(load_in_8bit=True)
+        bnb_config = BitsAndBytesConfig(
+            load_in_4bit=True,
+            bnb_4bit_use_double_quant=True,
+            bnb_4bit_quant_type="nf4",
+            bnb_4bit_compute_dtype=torch.bfloat16,
+        )
         self.model = AutoModelForCausalLM.from_pretrained(
             peft_config.base_model_name_or_path,
             quantization_config=bnb_config if do_quantize else None,
+            torch_dtype=torch.float16,
         )
-        if do_quantize:
-            self.model = prepare_model_for_int8_training(self.model)
         if use_adapter:
             self.model = PeftModelForCausalLM.from_pretrained(
                 self.model, checkpoint_path

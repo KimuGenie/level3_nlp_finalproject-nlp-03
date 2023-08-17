@@ -2,6 +2,7 @@ import sys
 
 sys.path.append("./")
 
+import torch
 from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
@@ -14,7 +15,7 @@ from peft import (
     LoraConfig,
     PrefixTuningConfig,
     get_peft_model,
-    prepare_model_for_int8_training,
+    prepare_model_for_kbit_training,
     TaskType,
     PeftConfig,
     PeftModelForCausalLM,
@@ -64,7 +65,12 @@ def train(args):
         raise NotImplementedError
 
     # QLoRA configs
-    bnb_config = BitsAndBytesConfig(load_in_8bit=True)
+    bnb_config = BitsAndBytesConfig(
+        load_in_4bit=True,
+        bnb_4bit_use_double_quant=True,
+        bnb_4bit_quant_type="nf4",
+        bnb_4bit_compute_dtype=torch.bfloat16,
+    )
 
     if "checkpoint" in args.model_name_or_checkpoint:
         # 체크포인트에서 모델을 불러옵니다.
@@ -74,7 +80,7 @@ def train(args):
         model = AutoModelForCausalLM.from_pretrained(
             peft_confing.base_model_name_or_path, quantization_config=bnb_config
         )
-        model = prepare_model_for_int8_training(model)
+        model = prepare_model_for_kbit_training(model)
         model = PeftModelForCausalLM.from_pretrained(
             model, args.model_name_or_checkpoint
         )
@@ -87,7 +93,7 @@ def train(args):
         if args.peft_type == "lora":
             peft_config = LoraConfig(
                 r=args.lora_r,
-                # target_modules=["query_key_value"],
+                target_modules=["query_key_value"],
                 lora_alpha=args.lora_alpha,
                 lora_dropout=args.lora_dropout,
                 task_type=TaskType.CAUSAL_LM,
@@ -104,7 +110,7 @@ def train(args):
         model = AutoModelForCausalLM.from_pretrained(
             args.model_name_or_checkpoint, quantization_config=bnb_config
         )
-        model = prepare_model_for_int8_training(model)
+        model = prepare_model_for_kbit_training(model)
         model = get_peft_model(model, peft_config)
 
     model.config.use_cache = False

@@ -41,7 +41,9 @@ if __name__ == "__main__":
     # parse arguments
     parser = argparse.ArgumentParser()
     parser.add_argument("--data-path", default="./data/sample_data.json")
-    parser.add_argument("--model_checkpoint_path", default="ggul-tiger/negobot_361_v3")
+    parser.add_argument(
+        "--model_checkpoint_path", default="ggul-tiger/negobot_361_4bit_v1"
+    )
     parser.add_argument("--conv-template-name", default="v2")
     parser.add_argument("--num-rollouts", type=int, default=30)
     args = parser.parse_args()
